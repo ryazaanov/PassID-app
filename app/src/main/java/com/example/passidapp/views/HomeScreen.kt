@@ -1,34 +1,14 @@
 package com.example.passidapp.views
 
 import android.annotation.SuppressLint
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.QrCode
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -39,19 +19,19 @@ import androidx.navigation.NavController
 import com.example.compose.PassIDAppTheme
 import com.example.passidapp.Navigation.BottomNavigation
 import com.example.passidapp.Navigation.Screen
-import com.example.passidapp.models.PassCardModel
-import com.example.passidapp.viewmodels.PassCardViewModel
-
+import com.example.passidapp.models.Pass
+import com.example.passidapp.viewmodels.PassViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PassCard(navController: NavController, passCardModel: PassCardModel) {
+fun PassCard(navController: NavController, pass: Pass, isConfirmed: Boolean) {
+    val passId = pass.pass_id
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         onClick = {
-            navController.navigate(Screen.PassScreen.route)
+            navController.navigate(Screen.PassScreen.createRoute(passId))
         }
     ) {
         Column(
@@ -59,29 +39,32 @@ fun PassCard(navController: NavController, passCardModel: PassCardModel) {
                 .fillMaxWidth()
                 .fillMaxHeight()
                 .padding(horizontal = 16.dp)
-                .padding(top = 16.dp), verticalArrangement = Arrangement.SpaceBetween
+                .padding(top = 16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
             // Тип пропуска
-            Text(text = passCardModel.passType, fontWeight = FontWeight.Medium, fontSize = 12.sp)
+            Text(text = pass.pass_type, fontWeight = FontWeight.Medium, fontSize = 12.sp)
             Spacer(modifier = Modifier.height(2.dp))
             // Название пропуска
-            Text(text = passCardModel.companyName, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+            Text(text = pass.pass_name, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+            // Статус пропуска
+            Text(
+                text = if (isConfirmed) "Пропуск подтвержден" else "Пропуск не подтвержден!",
+                fontWeight = FontWeight.Light,
+                fontSize = 14.sp,
+                color = if (isConfirmed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+            )
             Spacer(modifier = Modifier.height(26.dp))
-
             TextButton(
                 onClick = {
-                    navController.navigate(Screen.PassScreen.route)
+                    navController.navigate(Screen.PassScreen.createRoute(passId))
                 },
-
                 modifier = Modifier
                     .fillMaxWidth()
-
-                    .align(
-                        Alignment.CenterHorizontally
-                    )
-
+                    .align(Alignment.CenterHorizontally)
             ) {
-                Row() {
+                Row {
                     Icon(
                         imageVector = Icons.Filled.QrCode,
                         contentDescription = "QR code"
@@ -90,8 +73,6 @@ fun PassCard(navController: NavController, passCardModel: PassCardModel) {
                     Text(text = "Открыть QR-код", fontWeight = FontWeight.Medium, fontSize = 16.sp)
                 }
             }
-
-
         }
     }
 }
@@ -106,7 +87,7 @@ fun NewPass(navController: NavController) {
         horizontalAlignment = Alignment.End,
     ) {
         FloatingActionButton(
-            onClick = { navController.navigate(Screen.PassTypeScreen.route) },
+            onClick = { navController.navigate(Screen.CreatePassScreen.route) },
         ) {
             Icon(Icons.Filled.Add, "Floating action button.")
         }
@@ -116,33 +97,50 @@ fun NewPass(navController: NavController) {
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(navController: NavController, passCardViewModel: PassCardViewModel = viewModel()) {
-    val uiState = passCardViewModel.uiState.collectAsState().value
+fun HomeScreen(navController: NavController, passViewModel: PassViewModel = viewModel()) {
+    val passesState = passViewModel.passesState.collectAsState().value
+    val errorState = passViewModel.errorState.collectAsState().value
+    passViewModel.getPasses()
+
+    // Local map to track confirmation status
+    val confirmationStatus = remember { mutableStateMapOf<String, Boolean>() }
 
     PassIDAppTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column {
-                TopAppBar(title = { Text(text = "Мои пропуска") }, actions = { /* Actions */ })
-                Box(modifier = Modifier.fillMaxWidth()
-                                        .fillMaxHeight(0.9f)) {
-//                    Проверяем состояние загрузки
-                        if (uiState.isLoading) {
+                TopAppBar(
+                    title = { Text(text = "Мои пропуска") },
+                    actions = {
+                        IconButton(onClick = { navController.navigate(Screen.QRScannerScreen.route) }) {
+                            Icon(Icons.Filled.QrCode, contentDescription = "Scan QR code")
+                        }
+                    }
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.9f)
+                ) {
+                    when {
+                        passesState.isEmpty() && errorState == null -> {
                             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                        } else if (uiState.error != null) {
+                        }
+                        errorState != null -> {
                             Text(
-                                text = "Ошибка: ${uiState.error}",
+                                text = "Ошибка: $errorState",
                                 modifier = Modifier.align(Alignment.Center),
                                 color = MaterialTheme.colorScheme.error
                             )
-                        } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            // Используем правильную функцию 'items' для списка
-                            items(uiState.passCards) { passCard ->
-                                // Убедитесь, что функция PassCard принимает объект PassCardModel
-                                PassCard(navController, passCard)
+                        }
+                        passesState.isNotEmpty() -> {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                items(passesState) { pass ->
+                                    val isConfirmed = confirmationStatus[pass.pass_id] ?: false
+                                    PassCard(navController, pass, isConfirmed)
+                                }
                             }
                         }
                     }
@@ -153,4 +151,3 @@ fun HomeScreen(navController: NavController, passCardViewModel: PassCardViewMode
         }
     }
 }
-

@@ -9,25 +9,23 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.example.compose.PassIDAppTheme
 import com.example.passidapp.Navigation.Navigation
+import com.example.passidapp.network.RetrofitInstance
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val apiService = RetrofitInstance.api
+
         setContent {
             PassIDAppTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Navigation()
+                    Navigation(false)
                 }
             }
         }
     }
 }
-
-
-
-
-

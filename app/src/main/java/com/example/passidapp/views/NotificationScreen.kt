@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -24,11 +25,18 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.compose.PassIDAppTheme
 import com.example.passidapp.Navigation.BottomNavigation
-import com.example.passidapp.Navigation.Screen
+
+data class Notification(val type: String, val title: String, val date: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationScreen(navController: NavController) {
+    val notifications = listOf(
+        Notification(type = "Информация", title = "Ваш пропуск одобрен!", date = "10.06.2024 09:24"),
+        Notification(type = "Информация", title = "Заявка на создание пропуска принята!", date = "09.06.2024 11:11"),
+        Notification(type = "Важное", title = "Ваш пропуск заканчивается 09 июня", date = "08.06.2024 12:00")
+    )
+
     PassIDAppTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -44,15 +52,14 @@ fun NotificationScreen(navController: NavController) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .fillMaxHeight(0.9f),
-                ){
+                ) {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
-
-                    )
-                    {
-                        item{ NotificationCard(notType = "Важное", notTitle = "Пропуск закончится 31 декабря", navController = navController) }
-
+                    ) {
+                        items(notifications) { notification ->
+                            NotificationCard(notification)
+                        }
                     }
                 }
                 BottomNavigation(selectedItemIndex = 0, navController = navController)
@@ -63,25 +70,30 @@ fun NotificationScreen(navController: NavController) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationCard(notType: String, notTitle: String, navController: NavController) {
+fun NotificationCard(notification: Notification) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        onClick = { navController.navigate(Screen.NotificationInfoScreen.route)}
+        onClick = { /*navController.navigate(Screen.NotificationInfoScreen.route)*/ }
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
-                .padding(horizontal = 16.dp).padding(top = 16.dp), verticalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 16.dp)
+                .padding(top = 16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
             // Тип уведомления
-            Text(text = notType, fontWeight = FontWeight.Medium, fontSize = 12.sp)
+            Text(text = notification.type, fontWeight = FontWeight.Medium, fontSize = 12.sp)
             Spacer(modifier = Modifier.height(2.dp))
             // Текст уведомления
-            Text(text = notTitle, fontWeight = FontWeight.Bold, fontSize = 24.sp)
-            Spacer(modifier = Modifier.height(26.dp))
+            Text(text = notification.title, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+            // Дата уведомления
+            Text(text = notification.date, fontWeight = FontWeight.Light, fontSize = 14.sp)
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
